@@ -18,15 +18,20 @@
         <xsl:sequence select="format-time($startTime, '[h]:[m01]') || '–' || $end-time"/>
     </xsl:function>
 
+    <xsl:variable name="time_slots" select="distinct-values(//slot/@time)" as="xs:string+"/>
+
     <xsl:template match="/">
         <!-- Create weekly and then daily schedules -->
         <xsl:apply-templates select="//week"/>
-        <xsl:apply-templates select="//week" mode="daily"/>
+        <!--<xsl:apply-templates select="//week" mode="daily"/>-->
+        <xsl:message select="$time_slots"/>
     </xsl:template>
 
     <!-- Templates for weekly plans -->
     <xsl:template match="week">
-        <xsl:variable name="filename" as="xs:string" select="'week_' || @num || '/week_' || @num || '_plan.md'"/>
+        <xsl:variable name="currentWeek" select="." as="element(week)"/>
+        <xsl:variable name="filename" as="xs:string"
+            select="'week_' || @num || '/week_' || @num || '_plan.md'"/>
         <xsl:result-document method="text" omit-xml-declaration="yes" href="{$filename}">
             <xsl:value-of select="'# Week ' || @num || ' plan: ' || ./title || '&#x0a;' || '&#x0a;'"/>
             <xsl:text>Time | </xsl:text>
@@ -36,7 +41,22 @@
                 <xsl:text> | ----</xsl:text>
             </xsl:for-each>
             <xsl:text>&#x0a;</xsl:text>
-            <xsl:apply-templates select="day[1]/slot"/>
+            <xsl:for-each select="$time_slots">
+                <xsl:variable name="currentSlot" select="current()" as="xs:string"/>
+                <xsl:variable name="slotContents" as="xs:string+">
+                    <xsl:for-each select="$currentWeek/day">
+                        <xsl:choose>
+                            <xsl:when test="current()/slot/@time = $currentSlot">
+                                <xsl:text>Yes</xsl:text>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <xsl:text>No</xsl:text>
+                            </xsl:otherwise>
+                        </xsl:choose>
+                    </xsl:for-each>
+                </xsl:variable>
+                <xsl:sequence select="$currentSlot, string-join($slotContents, ' | '), '&#x0a;'"/>
+            </xsl:for-each>
         </xsl:result-document>
     </xsl:template>
     <xsl:template match="day">
